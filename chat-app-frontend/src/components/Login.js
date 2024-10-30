@@ -5,37 +5,60 @@ function Login({ setUser }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+    setIsLoading(true);
+
     try {
-      const res = await axios.post('http://localhost:5000/api/auth/login', { email, password });
+      const res = await axios.post('http://localhost:5000/api/auth/login', { 
+        email, 
+        password 
+      });
       localStorage.setItem('token', res.data.token);
       setUser(res.data.user);
     } catch (err) {
       setError(err.response?.data?.message || 'An error occurred during login');
-      console.error(err.response?.data?.message);
+    } finally {
+      setIsLoading(false);
     }
   };
 
   return (
-    <form onSubmit={handleSubmit}>
-      <h2>Login</h2>
-      {error && <div style={{ color: 'red' }}>{error}</div>}
-      <input 
-        type="email"
-        placeholder="Email" 
-        onChange={(e) => setEmail(e.target.value)} 
-        value={email}
-      />
-      <input 
-        placeholder="Password" 
-        type="password" 
-        onChange={(e) => setPassword(e.target.value)} 
-        value={password}
-      />
-      <button type="submit">Login</button>
+    <form className="auth-form" onSubmit={handleSubmit}>
+      {error && <div className="error-message">{error}</div>}
+      
+      <div className="form-group">
+        <input 
+          className="form-input"
+          type="email"
+          placeholder="Email" 
+          onChange={(e) => setEmail(e.target.value)} 
+          value={email}
+          required
+        />
+      </div>
+
+      <div className="form-group">
+        <input 
+          className="form-input"
+          type="password"
+          placeholder="Password" 
+          onChange={(e) => setPassword(e.target.value)} 
+          value={password}
+          required
+        />
+      </div>
+
+      <button 
+        className="submit-btn" 
+        type="submit"
+        disabled={isLoading}
+      >
+        {isLoading ? 'Logging in...' : 'Login'}
+      </button>
     </form>
   );
 }
