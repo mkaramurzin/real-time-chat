@@ -16,6 +16,9 @@ const io = socketio(server, {
     }
 });
 
+// Make io instance available to our routes
+app.set('io', io);
+
 // Middleware
 app.use(cors());
 app.use(express.json());
@@ -33,13 +36,41 @@ io.on('connection', (socket) => {
         console.log('Client disconnected');
     });
 
-    socket.on('message', (message) => {
-        io.emit('message', message);
+    socket.on('join room', (roomId) => {
+        socket.join(roomId);
+        console.log(`User joined room: ${roomId}`);
+    });
+
+    socket.on('leave room', (roomId) => {
+        socket.leave(roomId);
+        console.log(`User left room: ${roomId}`);
+    });
+
+    socket.on('message', (messageData) => {
+        io.to(messageData.chatRoom).emit('message', messageData);
+        console.log(`Message sent to room: ${messageData.chatRoom}`);
+    });
+
+    socket.on('auth', (userId) => {
+        socket.join(userId);
+        console.log(`User ${userId} authenticated`);
+    });
+
+    socket.on('accept-invite', async (roomId) => {
+        // Handle room acceptance
+        const room = await ChatRoom.findById(roomId);
+        if (room) {
+            io.to(room.creator.toString()).emit('invite-accepted', {
+                roomId,
+                roomName: room.name
+            });
+        }
     });
 });
 
 // Routes
 app.use('/api/auth', require('./routes/auth'));
+app.use('/api/chatrooms', require('./routes/chatRooms'));
 
 const PORT = process.env.PORT || 5000;
 server.listen(PORT, () => {
