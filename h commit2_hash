@@ -1,0 +1,58 @@
+[1mdiff --git a/chat-app-frontend/src/components/Chat.js b/chat-app-frontend/src/components/Chat.js[m
+[1mindex 08a6c5b..2224690 100644[m
+[1m--- a/chat-app-frontend/src/components/Chat.js[m
+[1m+++ b/chat-app-frontend/src/components/Chat.js[m
+[36m@@ -4,12 +4,41 @@[m [mimport ChatRoom from './ChatRoom';[m
+ import InviteModal from './InviteModal';[m
+ import './Chat.css';[m
+ import axios from 'axios';[m
+[32m+[m[32mimport { io } from 'socket.io-client';[m
+[32m+[m[32mimport Notifications from './Notifications';[m
+ [m
+ function Chat({ user }) {[m
+     const [chatRooms, setChatRooms] = useState([]);[m
+     const [selectedRoom, setSelectedRoom] = useState(null);[m
+     const [showInviteModal, setShowInviteModal] = useState(false);[m
+     const [loading, setLoading] = useState(true);[m
+[32m+[m[32m    const [invites, setInvites] = useState([]);[m
+[32m+[m[32m    const [socket, setSocket] = useState(null);[m
+[32m+[m
+[32m+[m[32m    useEffect(() => {[m
+[32m+[m[32m        const newSocket = io('http://localhost:5000');[m
+[32m+[m[41m        [m
+[32m+[m[32m        // Authenticate socket with user ID[m
+[32m+[m[32m        newSocket.emit('auth', user._id);[m
+[32m+[m
+[32m+[m[32m        // Listen for room invites[m
+[32m+[m[32m        newSocket.on('room-invite', (invite) => {[m
+[32m+[m[32m            setInvites(prev => [...prev, invite]);[m
+[32m+[m[32m        });[m
+[32m+[m
+[32m+[m[32m        setSocket(newSocket);[m
+[32m+[m
+[32m+[m[32m        return () => newSocket.close();[m
+[32m+[m[32m    }, [user._id]);[m
+[32m+[m
+[32m+[m[32m    const handleAcceptInvite = async (roomId) => {[m
+[32m+[m[32m        setInvites(prev => prev.filter(invite => invite.roomId !== roomId));[m
+[32m+[m[32m        await fetchChatRooms();[m
+[32m+[m[32m    };[m
+[32m+[m
+[32m+[m[32m    const handleDeclineInvite = (roomId) => {[m
+[32m+[m[32m        setInvites(prev => prev.filter(invite => invite.roomId !== roomId));[m
+[32m+[m[32m    };[m
+ [m
+     useEffect(() => {[m
+         fetchChatRooms();[m
+[36m@@ -34,6 +63,11 @@[m [mfunction Chat({ user }) {[m
+ [m
+     return ([m
+         <div className="chat-layout">[m
+[32m+[m[32m            <Notifications[m[41m [m
+[32m+[m[32m                invites={invites}[m
+[32m+[m[32m                onAccept={handleAcceptInvite}[m
+[32m+[m[32m                onDecline={handleDeclineInvite}[m
+[32m+[m[32m            />[m
+             <div className="sidebar">[m
+                 <div className="sidebar-header">[m
+                     <h2>Chat Rooms</h2>[m

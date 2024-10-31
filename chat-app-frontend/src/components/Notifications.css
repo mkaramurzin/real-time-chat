@@ -1,0 +1,70 @@
+.notifications {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background: var(--primary-light);
+    border-radius: 8px;
+    padding: 1rem;
+    width: 300px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    z-index: 1000;
+}
+
+.notifications h3 {
+    margin: 0 0 1rem 0;
+    color: var(--text-primary);
+    font-size: 1rem;
+}
+
+.invites-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.invite-item {
+    background: var(--primary-dark);
+    padding: 0.75rem;
+    border-radius: 6px;
+}
+
+.invite-info {
+    margin-bottom: 0.75rem;
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+}
+
+.invite-info .inviter,
+.invite-info .room-name {
+    color: var(--text-primary);
+    font-weight: 500;
+}
+
+.invite-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.invite-actions button {
+    flex: 1;
+    padding: 0.5rem;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: opacity 0.2s;
+}
+
+.accept-btn {
+    background: var(--accent-orange);
+    color: white;
+}
+
+.decline-btn {
+    background: var(--primary-light);
+    color: var(--text-primary);
+}
+
+.invite-actions button:hover {
+    opacity: 0.9;
+} 
