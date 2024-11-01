@@ -6,8 +6,9 @@ import './Chat.css';
 import axios from 'axios';
 import { io } from 'socket.io-client';
 import Notifications from './Notifications';
+import UserInfo from './UserInfo';
 
-function Chat({ user }) {
+function Chat({ user, setUser }) {
     const [chatRooms, setChatRooms] = useState([]);
     const [selectedRoom, setSelectedRoom] = useState(null);
     const [showInviteModal, setShowInviteModal] = useState(false);
@@ -68,6 +69,7 @@ function Chat({ user }) {
 
     return (
         <div className="chat-layout">
+            <UserInfo user={user} onLogout={() => setUser(null)} />
             <Notifications 
                 invites={invites}
                 onAccept={handleAcceptInvite}
@@ -95,7 +97,6 @@ function Chat({ user }) {
                     <ChatRoom 
                         room={selectedRoom}
                         user={user}
-                        onInvite={() => setShowInviteModal(true)}
                     />
                 ) : (
                     <div className="no-room-selected">

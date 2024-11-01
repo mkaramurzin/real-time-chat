@@ -9,7 +9,7 @@ function App() {
   const [isLoginView, setIsLoginView] = useState(true);
 
   if (user) {
-    return <Chat user={user} />;
+    return <Chat user={user} setUser={setUser} />;
   }
 
   return (

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import io from 'socket.io-client';
 import axios from 'axios';
 
-function ChatRoom({ room, user, onInvite }) {
+function ChatRoom({ room, user }) {
     const [messages, setMessages] = useState([]);
     const [newMessage, setNewMessage] = useState('');
     const [socket, setSocket] = useState(null);
@@ -118,9 +118,6 @@ function ChatRoom({ room, user, onInvite }) {
                         {room.members.length} member{room.members.length !== 1 ? 's' : ''}
                     </span>
                 </div>
-                <button className="invite-btn" onClick={onInvite}>
-                    Invite User
-                </button>
             </div>
 
             <div 
