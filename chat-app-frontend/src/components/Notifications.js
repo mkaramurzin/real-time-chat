@@ -13,7 +13,17 @@ function Notifications({ invites, onAccept, onDecline }) {
           headers: { Authorization: `Bearer ${token}` }
         }
       );
-      onAccept(roomId);
+      
+      // Fetch the room data after accepting
+      const response = await axios.get(
+        `http://localhost:5000/api/chatrooms/my-rooms`,
+        {
+          headers: { Authorization: `Bearer ${token}` }
+        }
+      );
+      
+      const acceptedRoom = response.data.find(room => room._id === roomId);
+      onAccept(roomId, acceptedRoom);
     } catch (error) {
       console.error('Error accepting invitation:', error);
     }

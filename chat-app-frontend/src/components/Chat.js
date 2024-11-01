@@ -31,9 +31,14 @@ function Chat({ user }) {
         return () => newSocket.close();
     }, [user._id]);
 
-    const handleAcceptInvite = async (roomId) => {
+    const handleAcceptInvite = async (roomId, acceptedRoom) => {
         setInvites(prev => prev.filter(invite => invite.roomId !== roomId));
         await fetchChatRooms();
+        
+        // Select the accepted room
+        if (acceptedRoom) {
+            setSelectedRoom(acceptedRoom);
+        }
     };
 
     const handleDeclineInvite = (roomId) => {
