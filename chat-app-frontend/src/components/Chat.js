@@ -17,19 +17,39 @@ function Chat({ user, setUser }) {
     const [socket, setSocket] = useState(null);
 
     useEffect(() => {
-        const newSocket = io('http://localhost:5000');
+        const newSocket = io('http://localhost:5000', {
+            reconnection: true,
+            reconnectionAttempts: 5,
+            reconnectionDelay: 1000
+        });
+        
+        newSocket.on('connect_error', (error) => {
+            console.error('Socket connection error:', error);
+        });
+
+        newSocket.on('disconnect', (reason) => {
+            console.log('Socket disconnected:', reason);
+        });
+        
+        console.log('Current user:', user);
         
         // Authenticate socket with user ID
         newSocket.emit('auth', user._id);
 
         // Listen for room invites
         newSocket.on('room-invite', (invite) => {
+            console.log('Received invite:', invite);
             setInvites(prev => [...prev, invite]);
         });
 
         setSocket(newSocket);
 
-        return () => newSocket.close();
+        return () => {
+            newSocket.off('room-updated');
+            newSocket.off('connect_error');
+            newSocket.off('disconnect');
+            newSocket.close();
+        };
     }, [user._id]);
 
     const handleAcceptInvite = async (roomId, acceptedRoom) => {
