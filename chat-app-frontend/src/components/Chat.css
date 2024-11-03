@@ -145,17 +145,23 @@
     border-bottom: 1px solid rgba(255, 255, 255, 0.1);
     display: flex;
     justify-content: space-between;
-    align-items: center;
+    align-items: flex-start;
 }
 
 .room-info h3 {
-    margin: 0;
+    margin: 0 0 0.5rem 0;
     color: var(--text-primary);
 }
 
-.member-count {
-    font-size: 0.8rem;
+.room-info .member-count {
+    font-size: 0.9rem;
     color: var(--text-secondary);
+    display: block;
+    margin-top: 0.25rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 500px;
 }
 
 .invite-btn {

@@ -42,6 +42,11 @@ function Chat({ user, setUser }) {
             setInvites(prev => [...prev, invite]);
         });
 
+        // Add listener for room updates
+        newSocket.on('room-updated', (updatedRoom) => {
+            handleRoomUpdate(updatedRoom);
+        });
+
         setSocket(newSocket);
 
         return () => {
@@ -87,6 +92,19 @@ function Chat({ user, setUser }) {
         }
     };
 
+    const handleRoomUpdate = (updatedRoom) => {
+        setChatRooms(prevRooms => {
+            return prevRooms.map(room => 
+                room._id === updatedRoom._id ? updatedRoom : room
+            );
+        });
+        
+        // If this is the currently selected room, update it
+        if (selectedRoom?._id === updatedRoom._id) {
+            setSelectedRoom(updatedRoom);
+        }
+    };
+
     return (
         <div className="chat-layout">
             <UserInfo user={user} onLogout={() => setUser(null)} />
@@ -117,6 +135,7 @@ function Chat({ user, setUser }) {
                     <ChatRoom 
                         room={selectedRoom}
                         user={user}
+                        onRoomUpdate={handleRoomUpdate}
                     />
                 ) : (
                     <div className="no-room-selected">

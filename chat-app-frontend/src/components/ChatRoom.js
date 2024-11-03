@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import io from 'socket.io-client';
 import axios from 'axios';
 
-function ChatRoom({ room, user }) {
+function ChatRoom({ room, user, onRoomUpdate }) {
     const [messages, setMessages] = useState([]);
     const [newMessage, setNewMessage] = useState('');
     const [socket, setSocket] = useState(null);
@@ -39,12 +39,19 @@ function ChatRoom({ room, user }) {
             scrollToBottom();
         });
 
+        newSocket.on('room-updated', (updatedRoom) => {
+            if (onRoomUpdate) {
+                onRoomUpdate(updatedRoom);
+            }
+        });
+
         return () => {
             newSocket.off('message');
             newSocket.off('message_sent');
+            newSocket.off('room-updated');
             newSocket.close();
         };
-    }, [room._id]);
+    }, [room._id, onRoomUpdate]);
 
     const fetchMessages = async (pageNum) => {
         try {
@@ -115,7 +122,8 @@ function ChatRoom({ room, user }) {
                 <div className="room-info">
                     <h3>{room.name}</h3>
                     <span className="member-count">
-                        {room.members.length} member{room.members.length !== 1 ? 's' : ''}
+                        {room.members?.length || 0} member{room.members?.length !== 1 ? 's' : ''}: {' '}
+                        {room.members?.map(member => member.username).join(', ')}
                     </span>
                 </div>
             </div>
