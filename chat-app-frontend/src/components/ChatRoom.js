@@ -122,8 +122,7 @@ function ChatRoom({ room, user, onRoomUpdate }) {
                 <div className="room-info">
                     <h3>{room.name}</h3>
                     <span className="member-count">
-                        {room.members?.length || 0} member{room.members?.length !== 1 ? 's' : ''}: {' '}
-                        {room.members?.map(member => member.username).join(', ')}
+                        {room.members?.length || 0} member{room.members?.length !== 1 ? 's' : ''}
                     </span>
                 </div>
             </div>

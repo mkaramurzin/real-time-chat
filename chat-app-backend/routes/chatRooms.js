@@ -117,7 +117,7 @@ router.post('/:roomId/accept', protect, async (req, res) => {
             return res.status(400).json({ message: 'Failed to update room' });
         }
 
-        // 4. Notify other members
+        // 4. Notify all room members about the update
         const io = req.app.get('io');
         updatedRoom.members.forEach(member => {
             io.to(member._id.toString()).emit('room-updated', updatedRoom);
