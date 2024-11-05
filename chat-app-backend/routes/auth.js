@@ -39,16 +39,16 @@ router.post('/register', async (req, res) => {
 // Login user
 router.post('/login', async (req, res) => {
     try {
-        const { email, password } = req.body;
+        const { username, password } = req.body;
         
-        const user = await User.findOne({ email });
+        const user = await User.findOne({ username });
         if (!user) {
-            return res.status(401).json({ message: 'Invalid email or password' });
+            return res.status(401).json({ message: 'Invalid username or password' });
         }
 
         const isMatch = await bcrypt.compare(password, user.password);
         if (!isMatch) {
-            return res.status(401).json({ message: 'Invalid email or password' });
+            return res.status(401).json({ message: 'Invalid username or password' });
         }
 
         const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
@@ -58,14 +58,24 @@ router.post('/login', async (req, res) => {
         res.json({
             user: {
                 _id: user._id,
-                username: user.username,
-                email: user.email
+                username: user.username
             },
             token
         });
     } catch (error) {
         console.error('Login error:', error);
         res.status(500).json({ message: 'Server error' });
+    }
+});
+
+// Verify token and return user data
+router.get('/verify', protect, async (req, res) => {
+    try {
+        const user = await User.findById(req.user._id).select('-password');
+        res.json({ user });
+    } catch (error) {
+        console.error('Token verification error:', error);
+        res.status(401).json({ message: 'Invalid token' });
     }
 });
 

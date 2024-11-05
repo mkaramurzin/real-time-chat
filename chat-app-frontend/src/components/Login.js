@@ -2,66 +2,66 @@ import React, { useState } from 'react';
 import axios from 'axios';
 
 function Login({ setUser }) {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
+    const [formData, setFormData] = useState({
+        username: '',
+        password: ''
+    });
+    const [error, setError] = useState('');
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setError('');
-    setIsLoading(true);
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        setError('');
 
-    try {
-      const res = await axios.post('http://localhost:5000/api/auth/login', { 
-        email, 
-        password 
-      });
-      console.log('Login response:', res.data);
-      localStorage.setItem('token', res.data.token);
-      setUser(res.data.user);
-    } catch (err) {
-      setError(err.response?.data?.message || 'An error occurred during login');
-    } finally {
-      setIsLoading(false);
-    }
-  };
+        try {
+            const response = await axios.post('http://localhost:5000/api/auth/login', {
+                username: formData.username,
+                password: formData.password
+            });
+            const { token, user } = response.data;
+            
+            // Store token in localStorage
+            localStorage.setItem('token', token);
+            
+            // Update user state
+            setUser(user);
+        } catch (error) {
+            setError(error.response?.data?.message || 'Login failed');
+        }
+    };
 
-  return (
-    <form className="auth-form" onSubmit={handleSubmit}>
-      {error && <div className="error-message">{error}</div>}
-      
-      <div className="form-group">
-        <input 
-          className="form-input"
-          type="email"
-          placeholder="Email" 
-          onChange={(e) => setEmail(e.target.value)} 
-          value={email}
-          required
-        />
-      </div>
+    const handleChange = (e) => {
+        setFormData({
+            ...formData,
+            [e.target.name]: e.target.value
+        });
+    };
 
-      <div className="form-group">
-        <input 
-          className="form-input"
-          type="password"
-          placeholder="Password" 
-          onChange={(e) => setPassword(e.target.value)} 
-          value={password}
-          required
-        />
-      </div>
-
-      <button 
-        className="submit-btn" 
-        type="submit"
-        disabled={isLoading}
-      >
-        {isLoading ? 'Logging in...' : 'Login'}
-      </button>
-    </form>
-  );
+    return (
+        <form onSubmit={handleSubmit} className="auth-form">
+            {error && <div className="error-message">{error}</div>}
+            <div className="form-group">
+                <input
+                    type="text"
+                    name="username"
+                    value={formData.username}
+                    onChange={handleChange}
+                    placeholder="Username"
+                    required
+                />
+            </div>
+            <div className="form-group">
+                <input
+                    type="password"
+                    name="password"
+                    value={formData.password}
+                    onChange={handleChange}
+                    placeholder="Password"
+                    required
+                />
+            </div>
+            <button type="submit" className="auth-button">Login</button>
+        </form>
+    );
 }
 
 export default Login;
