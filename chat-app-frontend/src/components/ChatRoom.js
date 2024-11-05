@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import io from 'socket.io-client';
 import axios from 'axios';
 
-function ChatRoom({ room, user, onRoomUpdate }) {
+function ChatRoom({ room, user, onRoomUpdate, onLeaveRoom }) {
     const [messages, setMessages] = useState([]);
     const [newMessage, setNewMessage] = useState('');
     const [socket, setSocket] = useState(null);
@@ -116,6 +116,26 @@ function ChatRoom({ room, user, onRoomUpdate }) {
         }
     };
 
+    const handleLeaveRoom = async () => {
+        try {
+            const token = localStorage.getItem('token');
+            await axios.post(
+                `http://localhost:5000/api/chatrooms/${room._id}/leave`,
+                {},
+                {
+                    headers: { Authorization: `Bearer ${token}` }
+                }
+            );
+            
+            if (onLeaveRoom) {
+                onLeaveRoom(room._id);
+            }
+        } catch (error) {
+            console.error('Error leaving room:', error);
+            // You might want to show an error message to the user here
+        }
+    };
+
     return (
         <div className="chat-room">
             <div className="chat-header">
@@ -125,6 +145,12 @@ function ChatRoom({ room, user, onRoomUpdate }) {
                         {room.members?.length || 0} member{room.members?.length !== 1 ? 's' : ''}
                     </span>
                 </div>
+                <button 
+                    className="leave-room-btn"
+                    onClick={handleLeaveRoom}
+                >
+                    Leave Room
+                </button>
             </div>
 
             <div 

@@ -47,12 +47,21 @@ function Chat({ user, setUser }) {
             handleRoomUpdate(updatedRoom);
         });
 
+        // Add listener for when user leaves a room
+        newSocket.on('room-left', (roomId) => {
+            setChatRooms(prevRooms => prevRooms.filter(room => room._id !== roomId));
+            if (selectedRoom?._id === roomId) {
+                setSelectedRoom(null);
+            }
+        });
+
         setSocket(newSocket);
 
         return () => {
             newSocket.off('room-updated');
             newSocket.off('connect_error');
             newSocket.off('disconnect');
+            newSocket.off('room-left');
             newSocket.close();
         };
     }, [user._id]);
@@ -105,6 +114,11 @@ function Chat({ user, setUser }) {
         }
     };
 
+    const handleLeaveRoom = (roomId) => {
+        setChatRooms(prevRooms => prevRooms.filter(room => room._id !== roomId));
+        setSelectedRoom(null);
+    };
+
     return (
         <div className="chat-layout">
             <UserInfo user={user} onLogout={() => setUser(null)} />
@@ -136,6 +150,7 @@ function Chat({ user, setUser }) {
                         room={selectedRoom}
                         user={user}
                         onRoomUpdate={handleRoomUpdate}
+                        onLeaveRoom={handleLeaveRoom}
                     />
                 ) : (
                     <div className="no-room-selected">

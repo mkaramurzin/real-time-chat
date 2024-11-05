@@ -176,4 +176,44 @@ router.post('/invite', protect, async (req, res) => {
     }
 });
 
+// Add this new route to handle leaving a room
+router.post('/:roomId/leave', protect, async (req, res) => {
+    try {
+        const chatRoom = await ChatRoom.findById(req.params.roomId);
+        
+        if (!chatRoom) {
+            return res.status(404).json({ message: 'Chat room not found' });
+        }
+
+        // Remove user from members array
+        const updatedRoom = await ChatRoom.findByIdAndUpdate(
+            req.params.roomId,
+            { $pull: { members: req.user._id } },
+            { 
+                new: true,
+                runValidators: true 
+            }
+        ).populate('members', 'username')
+         .populate('creator', 'username');
+
+        if (!updatedRoom) {
+            return res.status(400).json({ message: 'Failed to leave room' });
+        }
+
+        // Notify all room members about the update
+        const io = req.app.get('io');
+        updatedRoom.members.forEach(member => {
+            io.to(member._id.toString()).emit('room-updated', updatedRoom);
+        });
+        
+        // Also notify the leaving user
+        io.to(req.user._id.toString()).emit('room-left', updatedRoom._id);
+
+        res.json({ message: 'Successfully left the room' });
+    } catch (error) {
+        console.error('Error leaving room:', error);
+        res.status(500).json({ message: 'Error leaving room' });
+    }
+});
+
 module.exports = router; 
