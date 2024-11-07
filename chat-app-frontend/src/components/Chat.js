@@ -7,6 +7,7 @@ import axios from 'axios';
 import { io } from 'socket.io-client';
 import Notifications from './Notifications';
 import UserInfo from './UserInfo';
+import OnlineStatus from './OnlineStatus';
 
 function Chat({ user, setUser }) {
     const [chatRooms, setChatRooms] = useState([]);
@@ -15,6 +16,7 @@ function Chat({ user, setUser }) {
     const [loading, setLoading] = useState(true);
     const [invites, setInvites] = useState([]);
     const [socket, setSocket] = useState(null);
+    const [onlineUsers, setOnlineUsers] = useState(new Set());
 
     useEffect(() => {
         const newSocket = io('http://localhost:5000', {
@@ -55,6 +57,19 @@ function Chat({ user, setUser }) {
             }
         });
 
+        // Listen for user status updates
+        newSocket.on('user_status', ({ userId, status }) => {
+            setOnlineUsers(prev => {
+                const updated = new Set(prev);
+                if (status === 'online') {
+                    updated.add(userId);
+                } else {
+                    updated.delete(userId);
+                }
+                return updated;
+            });
+        });
+
         setSocket(newSocket);
 
         return () => {
@@ -62,6 +77,7 @@ function Chat({ user, setUser }) {
             newSocket.off('connect_error');
             newSocket.off('disconnect');
             newSocket.off('room-left');
+            newSocket.off('user_status');
             newSocket.close();
         };
     }, [user._id]);
@@ -121,7 +137,11 @@ function Chat({ user, setUser }) {
 
     return (
         <div className="chat-layout">
-            <UserInfo user={user} onLogout={() => setUser(null)} />
+            <UserInfo 
+                user={user} 
+                onLogout={() => setUser(null)} 
+                isOnline={true}
+            />
             <Notifications 
                 invites={invites}
                 onAccept={handleAcceptInvite}
@@ -141,6 +161,7 @@ function Chat({ user, setUser }) {
                     rooms={chatRooms}
                     selectedRoom={selectedRoom}
                     onSelectRoom={setSelectedRoom}
+                    onlineUsers={onlineUsers}
                 />
             </div>
             

@@ -79,4 +79,30 @@ router.get('/verify', protect, async (req, res) => {
     }
 });
 
+// Add this after the existing routes
+router.get('/online-users', protect, async (req, res) => {
+    try {
+        const onlineUsers = await User.find({ status: 'online' })
+            .select('_id')
+            .lean();
+        
+        res.json({ 
+            onlineUsers: onlineUsers.map(user => user._id)
+        });
+    } catch (error) {
+        console.error('Error fetching online users:', error);
+        res.status(500).json({ message: 'Error fetching online users' });
+    }
+});
+
+router.post('/logout', protect, async (req, res) => {
+    try {
+        await User.findByIdAndUpdate(req.user._id, { status: 'offline' });
+        res.json({ message: 'Logged out successfully' });
+    } catch (error) {
+        console.error('Error during logout:', error);
+        res.status(500).json({ message: 'Error during logout' });
+    }
+});
+
 module.exports = router;

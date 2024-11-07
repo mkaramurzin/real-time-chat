@@ -5,6 +5,7 @@ const dotenv = require('dotenv');
 const socketio = require('socket.io');
 const http = require('http');
 const Message = require('./models/Message');
+const User = require('./models/User');
 
 dotenv.config();
 
@@ -66,8 +67,32 @@ connectDB().then(() => {
     // Socket.io connection handling
     io.on('connection', (socket) => {
         console.log('New client connected');
+        let userId;
 
-        socket.on('disconnect', () => {
+        socket.on('auth', async (authUserId) => {
+            userId = authUserId;
+            socket.join(userId);
+            
+            // Update user status to online in database
+            try {
+                await User.findByIdAndUpdate(userId, { status: 'online' });
+                // Broadcast online status to all connected clients
+                io.emit('user_status', { userId, status: 'online' });
+            } catch (error) {
+                console.error('Error updating user status:', error);
+            }
+        });
+
+        socket.on('disconnect', async () => {
+            if (userId) {
+                try {
+                    await User.findByIdAndUpdate(userId, { status: 'offline' });
+                    // Broadcast offline status to all connected clients
+                    io.emit('user_status', { userId, status: 'offline' });
+                } catch (error) {
+                    console.error('Error updating user status:', error);
+                }
+            }
             console.log('Client disconnected');
         });
 
@@ -97,11 +122,6 @@ connectDB().then(() => {
                 console.error('Error saving message:', error);
                 socket.emit('message_error', { error: 'Failed to send message' });
             }
-        });
-
-        socket.on('auth', (userId) => {
-            socket.join(userId);
-            console.log(`User ${userId} authenticated`);
         });
 
         socket.on('accept-invite', async (roomId) => {
