@@ -1,8 +1,7 @@
 :root {
   --primary-dark: #2a2a2a;
   --primary-light: #3a3a3a;
-  --accent-orange: #ff7849;
-  --accent-mint: #98ffcc;
+  --accent-blue: #4aa9ff;
   --text-primary: #ffffff;
   --text-secondary: #b0b0b0;
   --error-red: #ff4444;
@@ -55,8 +54,8 @@
 }
 
 .tab-btn.active {
-  color: var(--accent-orange);
-  border-bottom: 2px solid var(--accent-orange);
+  color: var(--accent-blue);
+  border-bottom: 2px solid var(--accent-blue);
 }
 
 .auth-form {
@@ -81,14 +80,14 @@
 }
 
 .form-input:focus {
-  border-color: var(--accent-mint);
+  border-color: var(--accent-blue);
   outline: none;
 }
 
 .submit-btn {
   width: 100%;
   padding: 0.75rem;
-  background: var(--accent-orange);
+  background: var(--accent-blue);
   color: white;
   border: none;
   border-radius: 6px;
@@ -98,7 +97,7 @@
 }
 
 .submit-btn:hover {
-  background: #ff6635;
+  background: #358eff;
   transform: translateY(-1px);
 }
 
@@ -131,13 +130,13 @@ input {
 }
 
 input:focus {
-  border-color: var(--accent-mint);
+  border-color: var(--accent-blue);
   outline: none;
 }
 
 button {
   padding: 0.75rem 1.5rem;
-  background: var(--accent-orange);
+  background: var(--accent-blue);
   color: white;
   border: none;
   border-radius: 6px;
@@ -161,4 +160,16 @@ button:hover {
   border-radius: 4px;
   margin-bottom: 1rem;
   text-align: center;
-} 
+}
+
+.message.own-message {
+  background: var(--accent-blue);
+  align-self: flex-end;
+  border-radius: 12px;
+  border-bottom-right-radius: 2px;
+}
+
+.search-input:focus {
+  outline: none;
+  border-color: var(--accent-blue);
+}

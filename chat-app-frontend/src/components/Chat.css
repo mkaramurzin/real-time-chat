@@ -131,6 +131,7 @@
     padding: 0.75rem 1rem;
     margin-bottom: 0.5rem;
     background: var(--primary-dark);
+    border: 2px solid var(--accent-blue);
     border-radius: 6px;
     cursor: pointer;
     transition: all 0.2s ease;
@@ -138,11 +139,12 @@
 
 .chat-room-item:hover {
     transform: translateX(5px);
-    background: var(--accent-orange);
+    background: var(--accent-blue);
 }
 
 .chat-room-item.active {
-    background: var(--accent-orange);
+    background: var(--accent-blue);
+    border: 2px solid transparent;
 }
 
 .room-name {
@@ -433,4 +435,9 @@
 
 .chat-room-item.pending {
     opacity: 0.7;
+}
+
+/* Optional: Add a subtle shadow for more depth */
+.chat-room-item {
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
