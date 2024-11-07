@@ -14,6 +14,7 @@ function Chat({ user, setUser }) {
     const [socket, setSocket] = useState(null);
     const [onlineUsers, setOnlineUsers] = useState(new Set());
     const [showUserSearchModal, setShowUserSearchModal] = useState(false);
+    const [isSidebarVisible, setIsSidebarVisible] = useState(false);
 
     useEffect(() => {
         const newSocket = io('http://localhost:5000', {
@@ -198,14 +199,13 @@ function Chat({ user, setUser }) {
         }
     };
 
+    const toggleSidebar = () => {
+        setIsSidebarVisible(!isSidebarVisible);
+    };
+
     return (
         <div className="chat-layout">
-            <UserInfo 
-                user={user} 
-                onLogout={() => setUser(null)} 
-                isOnline={true}
-            />
-            <div className="sidebar">
+            <div className={`sidebar ${isSidebarVisible ? 'active' : ''}`}>
                 <div className="sidebar-header">
                     <h2>Messages</h2>
                     <button 
@@ -218,15 +218,26 @@ function Chat({ user, setUser }) {
                 <ChatRoomList 
                     rooms={chats}
                     selectedRoom={selectedChat}
-                    onSelectRoom={setSelectedChat}
+                    onSelectRoom={(room) => {
+                        setSelectedChat(room);
+                        setIsSidebarVisible(false); // Close sidebar after selection on mobile
+                    }}
                     onlineUsers={onlineUsers}
                     user={user}
                     onAcceptChat={handleAcceptChat}
                     onDeclineChat={handleDeclineChat}
                 />
             </div>
-            
             <div className="main-content">
+                <div className="user-info">
+                    <button className="menu-toggle" onClick={toggleSidebar}>
+                        ☰
+                    </button>
+                    <span className="username">{user.username}</span>
+                    <button className="logout-btn" onClick={() => setUser(null)}>
+                        Logout
+                    </button>
+                </div>
                 {selectedChat ? (
                     <ChatRoom 
                         room={selectedChat}

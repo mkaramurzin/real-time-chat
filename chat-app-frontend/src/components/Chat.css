@@ -441,3 +441,106 @@
 .chat-room-item {
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
+
+/* Add media queries for mobile responsiveness */
+@media screen and (max-width: 768px) {
+    .chat-layout {
+        grid-template-columns: 1fr;
+        position: relative;
+    }
+
+    .sidebar {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        z-index: 200;
+        background: var(--primary-dark);
+        transform: translateX(-100%);
+        transition: transform 0.3s ease;
+    }
+
+    .sidebar.active {
+        transform: translateX(0);
+    }
+
+    .main-content {
+        grid-column: 1;
+    }
+
+    .user-info {
+        left: 0;
+        padding: 0 1rem;
+        justify-content: space-between;
+    }
+
+    /* Add menu toggle button */
+    .menu-toggle {
+        display: block;
+        background: none;
+        border: none;
+        color: var(--text-primary);
+        font-size: 1.5rem;
+        cursor: pointer;
+        padding: 0.5rem;
+    }
+
+    /* Adjust message container for mobile */
+    .messages-container {
+        padding: 0.5rem;
+    }
+
+    .message {
+        max-width: 85%;
+        padding: 0.5rem 0.75rem;
+    }
+
+    /* Adjust input area for mobile */
+    .message-input {
+        padding: 0.75rem;
+        gap: 0.5rem;
+    }
+
+    .message-input input {
+        padding: 0.5rem 0.75rem;
+    }
+
+    .message-input button {
+        padding: 0.5rem 1rem;
+    }
+
+    /* Adjust modal for mobile */
+    .modal-content {
+        margin: 0 1rem;
+        max-width: none;
+        padding: 1.5rem;
+    }
+
+    /* Adjust chat room items for mobile */
+    .chat-room-item {
+        padding: 0.5rem 0.75rem;
+    }
+
+    .chat-actions button {
+        padding: 0.25rem 0.5rem;
+        font-size: 0.75rem;
+    }
+}
+
+/* Additional media query for very small screens */
+@media screen and (max-width: 480px) {
+    .user-info .username {
+        font-size: 0.9rem;
+    }
+
+    .logout-btn {
+        padding: 0.35rem 0.75rem;
+        font-size: 0.9rem;
+    }
+
+    .message {
+        max-width: 90%;
+        font-size: 0.9rem;
+    }
+}
