@@ -144,6 +144,7 @@ connectDB().then(() => {
     app.use('/api/auth', require('./routes/auth'));
     app.use('/api/chatrooms', require('./routes/chatRooms'));
     app.use('/api/messages', require('./routes/messages'));
+    app.use('/api/users', require('./routes/users'));
 
     // Start server
     const PORT = process.env.PORT || 5000;

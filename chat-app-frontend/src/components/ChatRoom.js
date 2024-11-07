@@ -120,7 +120,7 @@ function ChatRoom({ room, user, onRoomUpdate, onLeaveRoom }) {
         try {
             const token = localStorage.getItem('token');
             await axios.post(
-                `http://localhost:5000/api/chatrooms/${room._id}/leave`,
+                `http://localhost:5000/api/chatrooms/leave/${room._id}`,
                 {},
                 {
                     headers: { Authorization: `Bearer ${token}` }
@@ -132,7 +132,6 @@ function ChatRoom({ room, user, onRoomUpdate, onLeaveRoom }) {
             }
         } catch (error) {
             console.error('Error leaving room:', error);
-            // You might want to show an error message to the user here
         }
     };
 
@@ -142,14 +141,14 @@ function ChatRoom({ room, user, onRoomUpdate, onLeaveRoom }) {
                 <div className="room-info">
                     <h3>{room.name}</h3>
                     <span className="member-count">
-                        {room.members?.length || 0} member{room.members?.length !== 1 ? 's' : ''}
+                        Chatting with {room.participants?.find(p => p._id !== user._id)?.username}
                     </span>
                 </div>
                 <button 
                     className="leave-room-btn"
                     onClick={handleLeaveRoom}
                 >
-                    Leave Room
+                    Leave
                 </button>
             </div>
 

@@ -2,217 +2,152 @@ const express = require('express');
 const router = express.Router();
 const ChatRoom = require('../models/ChatRoom');
 const { protect } = require('../middleware/authMiddleware');
-const User = require('../models/User');
-const mongoose = require('mongoose');
 
-// Get user's chat rooms
-router.get('/my-rooms', protect, async (req, res) => {
+// Get user's DM rooms
+router.get('/my-chats', protect, async (req, res) => {
     try {
         const chatRooms = await ChatRoom.find({
-            members: req.user._id
-        }).populate('members', 'username');
+            participants: req.user._id
+        })
+        .populate('participants', 'username')
+        .populate('lastMessage')
+        .sort('-lastMessage.timestamp');
+        
         res.json(chatRooms);
     } catch (error) {
-        res.status(500).json({ message: 'Error fetching chat rooms' });
+        res.status(500).json({ message: 'Error fetching chats' });
     }
 });
 
-// Create a new chat room
-router.post('/', protect, async (req, res) => {
+// Start new DM chat
+router.post('/dm', protect, async (req, res) => {
     try {
-        const { name, isPrivate = false } = req.body;
+        const { recipientId } = req.body;
         
-        // Check if room with this name already exists
-        const existingRoom = await ChatRoom.findOne({ name });
-        if (existingRoom) {
-            return res.status(400).json({ message: 'A room with this name already exists' });
-        }
-
-        const chatRoom = await ChatRoom.create({
-            name,
-            creator: req.user._id,
-            members: [req.user._id],
-            isPrivate
+        // Check if chat already exists
+        const existingChat = await ChatRoom.findOne({
+            participants: { 
+                $all: [req.user._id, recipientId]
+            },
+            status: { $ne: 'declined' } // Don't return declined chats
         });
 
-        // Populate the creator and members fields
+        if (existingChat) {
+            return res.json(existingChat);
+        }
+
+        // Create new chat room
+        const chatRoom = await ChatRoom.create({
+            participants: [req.user._id, recipientId],
+            initiator: req.user._id,
+            status: 'pending'
+        });
+
         const populatedRoom = await ChatRoom.findById(chatRoom._id)
-            .populate('creator', 'username')
-            .populate('members', 'username');
+            .populate('participants', 'username');
+
+        // Notify recipient of new chat request
+        req.app.get('io').to(recipientId).emit('new-chat-request', populatedRoom);
 
         res.status(201).json(populatedRoom);
     } catch (error) {
-        console.error('Error creating chat room:', error);
-        res.status(500).json({ message: 'Error creating chat room', error: error.message });
+        res.status(500).json({ message: 'Error creating chat' });
     }
 });
 
-// Send invitation to join chat room
-router.post('/:roomId/invite', protect, async (req, res) => {
+// Accept DM chat
+router.post('/:chatId/accept', protect, async (req, res) => {
     try {
-        const { userId } = req.body;
-        const chatRoom = await ChatRoom.findById(req.params.roomId);
-        
-        if (!chatRoom) {
-            return res.status(404).json({ message: 'Chat room not found' });
+        const chat = await ChatRoom.findOne({
+            _id: req.params.chatId,
+            participants: req.user._id,
+            status: 'pending'
+        });
+
+        if (!chat) {
+            return res.status(404).json({ message: 'Chat not found or already processed' });
         }
-        
-        if (!chatRoom.members.includes(req.user._id)) {
-            return res.status(403).json({ message: 'Not authorized to invite' });
-        }
-        
-        if (chatRoom.pendingInvites.includes(userId)) {
-            return res.status(400).json({ message: 'Invitation already sent' });
-        }
-        
-        chatRoom.pendingInvites.push(userId);
-        await chatRoom.save();
-        
-        res.json({ message: 'Invitation sent successfully' });
+
+        chat.status = 'accepted';
+        await chat.save();
+
+        const populatedChat = await ChatRoom.findById(chat._id)
+            .populate('participants', 'username')
+            .populate('lastMessage');
+
+        // Notify other participant that chat was accepted
+        req.app.get('io').to(chat.participants
+            .find(p => p.toString() !== req.user._id.toString())
+            .toString())
+            .emit('chat-accepted', populatedChat);
+
+        res.json(populatedChat);
     } catch (error) {
-        res.status(500).json({ message: 'Error sending invitation' });
+        res.status(500).json({ message: 'Error accepting chat' });
     }
 });
 
-// Accept chat room invitation
-router.post('/:roomId/accept', protect, async (req, res) => {
-    console.log('=== Starting Accept Invitation Process ===');
-    console.log('Room ID:', req.params.roomId);
-    console.log('User ID:', req.user._id);
-    
+// Decline DM chat
+router.post('/:chatId/decline', protect, async (req, res) => {
     try {
-        // 1. Verify room exists
-        const chatRoom = await ChatRoom.findById(req.params.roomId);
-        console.log('Found chat room:', chatRoom ? 'Yes' : 'No');
-        
-        if (!chatRoom) {
-            console.log('Room not found');
-            return res.status(404).json({ message: 'Chat room not found' });
-        }
-
-        // 2. Debug current state
-        console.log('Current members:', chatRoom.members);
-        console.log('Current pending invites:', chatRoom.pendingInvites);
-        
-        // 3. Update room membership
-        const updates = {
-            $pull: { pendingInvites: req.user._id },
-            $addToSet: { members: req.user._id }
-        };
-
-        const updatedRoom = await ChatRoom.findByIdAndUpdate(
-            req.params.roomId,
-            updates,
-            { 
-                new: true,
-                runValidators: true 
-            }
-        ).populate('members', 'username')
-         .populate('creator', 'username');
-
-        console.log('Room updated:', updatedRoom ? 'Yes' : 'No');
-
-        if (!updatedRoom) {
-            console.log('Update failed');
-            return res.status(400).json({ message: 'Failed to update room' });
-        }
-
-        // 4. Notify all room members about the update
-        const io = req.app.get('io');
-        updatedRoom.members.forEach(member => {
-            io.to(member._id.toString()).emit('room-updated', updatedRoom);
+        const chat = await ChatRoom.findOne({
+            _id: req.params.chatId,
+            participants: req.user._id,
+            status: 'pending'
         });
 
-        console.log('=== Accept Invitation Process Completed ===');
-        res.json({ room: updatedRoom });
+        if (!chat) {
+            return res.status(404).json({ message: 'Chat not found or already processed' });
+        }
 
+        chat.status = 'declined';
+        await chat.save();
+
+        // Notify other participant that chat was declined
+        req.app.get('io').to(chat.participants
+            .find(p => p.toString() !== req.user._id.toString())
+            .toString())
+            .emit('chat-declined', chat._id);
+
+        res.json({ message: 'Chat declined successfully' });
     } catch (error) {
-        console.error('Accept Invitation Error:', error);
-        res.status(500).json({ 
-            message: 'Error accepting invitation',
-            error: error.message,
-            stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
-        });
+        res.status(500).json({ message: 'Error declining chat' });
     }
 });
 
-// Create room invitation
-router.post('/invite', protect, async (req, res) => {
+// Update the route path to match the frontend request
+router.post('/leave/:chatId', protect, async (req, res) => {
     try {
-        const { usernames, roomName } = req.body;
-        console.log('Creating invites for users:', usernames);
-        
-        // Find all users by their usernames
-        const invitedUsers = await User.find({ username: { $in: usernames } });
-        console.log('Found users:', invitedUsers.map(u => u.username));
-        
-        if (invitedUsers.length === 0) {
-            return res.status(404).json({ message: 'No valid users found' });
+        const chat = await ChatRoom.findOne({
+            _id: req.params.chatId,
+            participants: req.user._id
+        });
+
+        if (!chat) {
+            return res.status(404).json({ message: 'Chat not found' });
         }
 
-        // Create a new room with all invited users in pendingInvites
-        const chatRoom = await ChatRoom.create({
-            name: roomName,
-            creator: req.user._id,
-            members: [req.user._id],
-            pendingInvites: invitedUsers.map(user => user._id),
-            isPrivate: true
-        });
+        // Remove the user from participants
+        chat.participants = chat.participants.filter(
+            p => p.toString() !== req.user._id.toString()
+        );
 
-        // Send notifications to all invited users
-        const io = req.app.get('io');
-        invitedUsers.forEach(user => {
-            io.to(user._id.toString()).emit('room-invite', {
-                roomId: chatRoom._id,
-                roomName: chatRoom.name,
-                inviter: req.user.username
-            });
-        });
+        await chat.save();
 
-        res.status(201).json({ message: 'Invitations sent' });
+        // Notify other participant
+        const otherParticipant = chat.participants[0];
+        if (otherParticipant) {
+            req.app.get('io').to(otherParticipant.toString())
+                .emit('user-left-chat', {
+                    chatId: chat._id,
+                    userId: req.user._id
+                });
+        }
+
+        res.json({ message: 'Successfully left the chat' });
     } catch (error) {
-        console.error('Error creating room invitations:', error);
-        res.status(500).json({ message: 'Error sending invitations' });
-    }
-});
-
-// Add this new route to handle leaving a room
-router.post('/:roomId/leave', protect, async (req, res) => {
-    try {
-        const chatRoom = await ChatRoom.findById(req.params.roomId);
-        
-        if (!chatRoom) {
-            return res.status(404).json({ message: 'Chat room not found' });
-        }
-
-        // Remove user from members array
-        const updatedRoom = await ChatRoom.findByIdAndUpdate(
-            req.params.roomId,
-            { $pull: { members: req.user._id } },
-            { 
-                new: true,
-                runValidators: true 
-            }
-        ).populate('members', 'username')
-         .populate('creator', 'username');
-
-        if (!updatedRoom) {
-            return res.status(400).json({ message: 'Failed to leave room' });
-        }
-
-        // Notify all room members about the update
-        const io = req.app.get('io');
-        updatedRoom.members.forEach(member => {
-            io.to(member._id.toString()).emit('room-updated', updatedRoom);
-        });
-        
-        // Also notify the leaving user
-        io.to(req.user._id.toString()).emit('room-left', updatedRoom._id);
-
-        res.json({ message: 'Successfully left the room' });
-    } catch (error) {
-        console.error('Error leaving room:', error);
-        res.status(500).json({ message: 'Error leaving room' });
+        console.error('Error leaving chat:', error);
+        res.status(500).json({ message: 'Error leaving chat' });
     }
 });
 

@@ -1,22 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import ChatRoomList from './ChatRoomList';
 import ChatRoom from './ChatRoom';
-import InviteModal from './InviteModal';
 import './Chat.css';
 import axios from 'axios';
 import { io } from 'socket.io-client';
-import Notifications from './Notifications';
 import UserInfo from './UserInfo';
 import OnlineStatus from './OnlineStatus';
+import UserSearchModal from './UserSearchModal';
 
 function Chat({ user, setUser }) {
-    const [chatRooms, setChatRooms] = useState([]);
-    const [selectedRoom, setSelectedRoom] = useState(null);
-    const [showInviteModal, setShowInviteModal] = useState(false);
-    const [loading, setLoading] = useState(true);
-    const [invites, setInvites] = useState([]);
+    const [chats, setChats] = useState([]);
+    const [selectedChat, setSelectedChat] = useState(null);
     const [socket, setSocket] = useState(null);
     const [onlineUsers, setOnlineUsers] = useState(new Set());
+    const [showUserSearchModal, setShowUserSearchModal] = useState(false);
 
     useEffect(() => {
         const newSocket = io('http://localhost:5000', {
@@ -33,28 +30,12 @@ function Chat({ user, setUser }) {
             console.log('Socket disconnected:', reason);
         });
         
-        console.log('Current user:', user);
-        
         // Authenticate socket with user ID
         newSocket.emit('auth', user._id);
 
-        // Listen for room invites
-        newSocket.on('room-invite', (invite) => {
-            console.log('Received invite:', invite);
-            setInvites(prev => [...prev, invite]);
-        });
-
-        // Add listener for room updates
-        newSocket.on('room-updated', (updatedRoom) => {
-            handleRoomUpdate(updatedRoom);
-        });
-
-        // Add listener for when user leaves a room
-        newSocket.on('room-left', (roomId) => {
-            setChatRooms(prevRooms => prevRooms.filter(room => room._id !== roomId));
-            if (selectedRoom?._id === roomId) {
-                setSelectedRoom(null);
-            }
+        // Add listener for chat updates
+        newSocket.on('chat-updated', (updatedChat) => {
+            handleChatUpdate(updatedChat);
         });
 
         // Listen for user status updates
@@ -70,69 +51,151 @@ function Chat({ user, setUser }) {
             });
         });
 
+        // Add listeners for chat acceptance/declining
+        newSocket.on('new-chat-request', (chat) => {
+            setChats(prev => [...prev, chat]);
+        });
+
+        newSocket.on('chat-accepted', (updatedChat) => {
+            handleChatUpdate(updatedChat);
+        });
+
+        newSocket.on('chat-declined', (chatId) => {
+            setChats(prev => prev.filter(chat => chat._id !== chatId));
+            if (selectedChat?._id === chatId) {
+                setSelectedChat(null);
+            }
+        });
+
+        newSocket.on('user-left-chat', (data) => {
+            setChats(prev => prev.filter(chat => chat._id !== data.chatId));
+            if (selectedChat?._id === data.chatId) {
+                setSelectedChat(null);
+            }
+        });
+
         setSocket(newSocket);
 
         return () => {
-            newSocket.off('room-updated');
+            newSocket.off('chat-updated');
             newSocket.off('connect_error');
             newSocket.off('disconnect');
-            newSocket.off('room-left');
             newSocket.off('user_status');
+            newSocket.off('new-chat-request');
+            newSocket.off('chat-accepted');
+            newSocket.off('chat-declined');
+            newSocket.off('user-left-chat');
             newSocket.close();
         };
     }, [user._id]);
 
-    const handleAcceptInvite = async (roomId, acceptedRoom) => {
-        setInvites(prev => prev.filter(invite => invite.roomId !== roomId));
-        await fetchChatRooms();
-        
-        // Select the accepted room
-        if (acceptedRoom) {
-            setSelectedRoom(acceptedRoom);
-        }
-    };
-
-    const handleDeclineInvite = (roomId) => {
-        setInvites(prev => prev.filter(invite => invite.roomId !== roomId));
-    };
-
     useEffect(() => {
-        fetchChatRooms();
+        fetchChats();
     }, []);
 
-    const fetchChatRooms = async () => {
+    const fetchChats = async () => {
         try {
             const token = localStorage.getItem('token');
             const response = await axios.get(
-                'http://localhost:5000/api/chatrooms/my-rooms',
+                'http://localhost:5000/api/chatrooms/my-chats',
                 {
                     headers: { Authorization: `Bearer ${token}` }
                 }
             );
-            setChatRooms(response.data);
-            setLoading(false);
+            setChats(response.data);
         } catch (error) {
-            console.error('Error fetching chat rooms:', error);
-            setLoading(false);
+            console.error('Error fetching chats:', error);
         }
     };
 
-    const handleRoomUpdate = (updatedRoom) => {
-        setChatRooms(prevRooms => {
-            return prevRooms.map(room => 
-                room._id === updatedRoom._id ? updatedRoom : room
+    const handleChatUpdate = (updatedChat) => {
+        setChats(prevChats => {
+            return prevChats.map(chat => 
+                chat._id === updatedChat._id ? updatedChat : chat
             );
         });
         
-        // If this is the currently selected room, update it
-        if (selectedRoom?._id === updatedRoom._id) {
-            setSelectedRoom(updatedRoom);
+        // If this is the currently selected chat, update it
+        if (selectedChat?._id === updatedChat._id) {
+            setSelectedChat(updatedChat);
         }
     };
 
-    const handleLeaveRoom = (roomId) => {
-        setChatRooms(prevRooms => prevRooms.filter(room => room._id !== roomId));
-        setSelectedRoom(null);
+    const startNewChat = async (recipientId) => {
+        try {
+            const token = localStorage.getItem('token');
+            const response = await axios.post(
+                'http://localhost:5000/api/chatrooms/dm',
+                { recipientId },
+                {
+                    headers: { Authorization: `Bearer ${token}` }
+                }
+            );
+            setChats(prev => [...prev, response.data]);
+            setSelectedChat(response.data);
+        } catch (error) {
+            console.error('Error starting new chat:', error);
+        }
+    };
+
+    const handleSelectUser = async (selectedUser) => {
+        await startNewChat(selectedUser._id);
+        setShowUserSearchModal(false);
+    };
+
+    const handleAcceptChat = async (chatId) => {
+        try {
+            const token = localStorage.getItem('token');
+            const response = await axios.post(
+                `http://localhost:5000/api/chatrooms/${chatId}/accept`,
+                {},
+                {
+                    headers: { Authorization: `Bearer ${token}` }
+                }
+            );
+            handleChatUpdate(response.data);
+            setSelectedChat(response.data);
+        } catch (error) {
+            console.error('Error accepting chat:', error);
+        }
+    };
+
+    const handleDeclineChat = async (chatId) => {
+        try {
+            const token = localStorage.getItem('token');
+            await axios.post(
+                `http://localhost:5000/api/chatrooms/${chatId}/decline`,
+                {},
+                {
+                    headers: { Authorization: `Bearer ${token}` }
+                }
+            );
+            setChats(prev => prev.filter(chat => chat._id !== chatId));
+            if (selectedChat?._id === chatId) {
+                setSelectedChat(null);
+            }
+        } catch (error) {
+            console.error('Error declining chat:', error);
+        }
+    };
+
+    const handleLeaveChat = async (chatId) => {
+        try {
+            const token = localStorage.getItem('token');
+            await axios.post(
+                `http://localhost:5000/api/chatrooms/${chatId}/leave`,
+                {},
+                {
+                    headers: { Authorization: `Bearer ${token}` }
+                }
+            );
+            setChats(prev => prev.filter(chat => chat._id !== chatId));
+            if (selectedChat?._id === chatId) {
+                setSelectedChat(null);
+            }
+        } catch (error) {
+            console.error('Error leaving chat:', error);
+        }
     };
 
     return (
@@ -142,48 +205,46 @@ function Chat({ user, setUser }) {
                 onLogout={() => setUser(null)} 
                 isOnline={true}
             />
-            <Notifications 
-                invites={invites}
-                onAccept={handleAcceptInvite}
-                onDecline={handleDeclineInvite}
-            />
             <div className="sidebar">
                 <div className="sidebar-header">
-                    <h2>Chat Rooms</h2>
+                    <h2>Messages</h2>
                     <button 
-                        className="create-room-btn"
-                        onClick={() => setShowInviteModal(true)}
+                        className="new-message-btn"
+                        onClick={() => setShowUserSearchModal(true)}
                     >
-                        Create Room
+                        New Message
                     </button>
                 </div>
                 <ChatRoomList 
-                    rooms={chatRooms}
-                    selectedRoom={selectedRoom}
-                    onSelectRoom={setSelectedRoom}
+                    rooms={chats}
+                    selectedRoom={selectedChat}
+                    onSelectRoom={setSelectedChat}
                     onlineUsers={onlineUsers}
+                    user={user}
+                    onAcceptChat={handleAcceptChat}
+                    onDeclineChat={handleDeclineChat}
                 />
             </div>
             
             <div className="main-content">
-                {selectedRoom ? (
+                {selectedChat ? (
                     <ChatRoom 
-                        room={selectedRoom}
+                        room={selectedChat}
                         user={user}
-                        onRoomUpdate={handleRoomUpdate}
-                        onLeaveRoom={handleLeaveRoom}
+                        onRoomUpdate={handleChatUpdate}
+                        onLeaveRoom={handleLeaveChat}
                     />
                 ) : (
-                    <div className="no-room-selected">
-                        <h3>Select a chat room to start messaging</h3>
+                    <div className="no-chat-selected">
+                        <h3>Select a conversation to start messaging</h3>
                     </div>
                 )}
             </div>
-
-            {showInviteModal && (
-                <InviteModal 
-                    onClose={() => setShowInviteModal(false)}
-                    onInviteSent={fetchChatRooms}
+            {showUserSearchModal && (
+                <UserSearchModal
+                    onClose={() => setShowUserSearchModal(false)}
+                    onSelectUser={handleSelectUser}
+                    currentUser={user}
                 />
             )}
         </div>
